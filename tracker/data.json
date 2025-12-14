@@ -1,0 +1,145 @@
+{
+  "Basil": {
+    "description": "Quick-growing herb for warm weather, prefers full sun and consistent moisture.",
+    "care_schedule": [
+      {"task_title": "Start seeds indoors", "days_after_planting": 0},
+      {"task_title": "Thin seedlings", "days_after_planting": 14},
+      {"task_title": "Transplant outdoors", "days_after_planting": 28},
+      {"task_title": "Regular harvest (pinch tips)", "days_after_planting": 42}
+    ],
+    "watering": {"frequency_days": 2},
+    "fertilizer": {"type": "balanced", "schedule_days": 30},
+    "harvest_window": {"start": 42, "end": 120}
+  },
+  "Bell Peppers": {
+    "description": "Warm-season crop; needs long, warm season and consistent moisture.",
+    "care_schedule": [
+      {"task_title": "Sow seeds indoors", "days_after_planting": 0},
+      {"task_title": "Pot on seedlings", "days_after_planting": 21},
+      {"task_title": "Harden off seedlings", "days_after_planting": 49},
+      {"task_title": "Transplant outdoors", "days_after_planting": 56}
+    ],
+    "watering": {"frequency_days": 3},
+    "fertilizer": {"type": "higher potassium", "schedule_days": 45},
+    "harvest_window": {"start": 80, "end": 120}
+  },
+  "Carrots": {
+    "description": "Root crop; sow directly; thin seedlings.",
+    "care_schedule": [
+      {"task_title": "Sow seeds directly", "days_after_planting": 0},
+      {"task_title": "First thinning", "days_after_planting": 14},
+      {"task_title": "Second thinning", "days_after_planting": 28},
+      {"task_title": "Weed and mulch", "days_after_planting": 21}
+    ],
+    "watering": {"frequency_days": 4},
+    "fertilizer": {"type": "low nitrogen"},
+    "harvest_window": {"start": 60, "end": 90}
+  },
+  "Cucumbers": {
+    "description": "Fast vining plant; trellis for space; warm-season crop.",
+    "care_schedule": [
+      {"task_title": "Sow or transplant seedlings", "days_after_planting": 0},
+      {"task_title": "Install trellis", "days_after_planting": 7},
+      {"task_title": "First trellis training", "days_after_planting": 14},
+      {"task_title": "Begin harvesting", "days_after_planting": 50}
+    ],
+    "watering": {"frequency_days": 2},
+    "fertilizer": {"type": "balanced", "schedule_days": 21},
+    "harvest_window": {"start": 50, "end": 100}
+  },
+  "Lettuce": {
+    "description": "Cool-season leafy green; quick turnover; may be grown in succession.",
+    "care_schedule": [
+      {"task_title": "Sow seeds", "days_after_planting": 0},
+      {"task_title": "Thin seedlings", "days_after_planting": 10},
+      {"task_title": "Begin baby-leaf harvest", "days_after_planting": 21},
+      {"task_title": "Full head harvest", "days_after_planting": 45}
+    ],
+    "watering": {"frequency_days": 3},
+    "fertilizer": {"type": "balanced light", "schedule_days": 20},
+    "harvest_window": {"start": 21, "end": 60}
+  },
+  "Mint": {
+    "description": "Perennial herb; spreads vigorously; best grown in containers.",
+    "care_schedule": [
+      {"task_title": "Pot or transplant", "days_after_planting": 0},
+      {"task_title": "Pinch back regularly", "days_after_planting": 14},
+      {"task_title": "Divide in spring", "days_after_planting": 365}
+    ],
+    "watering": {"frequency_days": 4},
+    "fertilizer": {"type": "light organic", "schedule_days": 90},
+    "harvest_window": {"start": 21, "end": 9999}
+  },
+  "Potatoes": {
+    "description": "Tuber crop; plant seed potatoes; hill for more yield.",
+    "care_schedule": [
+      {"task_title": "Plant seed pieces", "days_after_planting": 0},
+      {"task_title": "First hill", "days_after_planting": 21},
+      {"task_title": "Second hill", "days_after_planting": 42},
+      {"task_title": "Begin new potato harvest", "days_after_planting": 70},
+      {"task_title": "Main harvest", "days_after_planting": 100}
+    ],
+    "watering": {"frequency_days": 5},
+    "fertilizer": {"type": "balanced", "schedule_days": 30},
+    "harvest_window": {"start": 70, "end": 120}
+  },
+  "Radishes": {
+    "description": "Very fast-growing root crop; great for succession planting.",
+    "care_schedule": [
+      {"task_title": "Sow seeds directly", "days_after_planting": 0},
+      {"task_title": "Thin seedlings", "days_after_planting": 7},
+      {"task_title": "Harvest early", "days_after_planting": 21}
+    ],
+    "watering": {"frequency_days": 4},
+    "fertilizer": {"type": "low nitrogen"},
+    "harvest_window": {"start": 21, "end": 35}
+  },
+  "Rosemary": {
+    "description": "Woody perennial herb; drought tolerant; prefers well-drained soil.",
+    "care_schedule": [
+      {"task_title": "Transplant or pot", "days_after_planting": 0},
+      {"task_title": "Light pruning", "days_after_planting": 60},
+      {"task_title": "Annual pruning", "days_after_planting": 365}
+    ],
+    "watering": {"frequency_days": 10},
+    "fertilizer": {"type": "light"},
+    "harvest_window": {"start": 60, "end": 9999}
+  },
+  "Spinach": {
+    "description": "Cool-season leafy green; bolt-prone in hot weather.",
+    "care_schedule": [
+      {"task_title": "Sow seeds directly", "days_after_planting": 0},
+      {"task_title": "Thin seedlings", "days_after_planting": 14},
+      {"task_title": "Baby leaf harvest", "days_after_planting": 28},
+      {"task_title": "Full harvest", "days_after_planting": 45}
+    ],
+    "watering": {"frequency_days": 3},
+    "fertilizer": {"type": "balanced", "schedule_days": 25},
+    "harvest_window": {"start": 28, "end": 60}
+  },
+  "Tomatoes": {
+    "description": "Warm-season vine; stake or cage; heavy feeder.",
+    "care_schedule": [
+      {"task_title": "Start seeds indoors", "days_after_planting": 0},
+      {"task_title": "Pot on seedlings", "days_after_planting": 21},
+      {"task_title": "Harden off", "days_after_planting": 49},
+      {"task_title": "Transplant & stake", "days_after_planting": 56},
+      {"task_title": "First fruit set care", "days_after_planting": 70},
+      {"task_title": "Begin harvesting", "days_after_planting": 90}
+    ],
+    "watering": {"frequency_days": 3},
+    "fertilizer": {"type": "higher phosphorus/potassium", "schedule_days": 30},
+    "harvest_window": {"start": 90, "end": 140}
+  },
+  "Zucchini": {
+    "description": "Productive summer squash; harvest frequently to encourage yield.",
+    "care_schedule": [
+      {"task_title": "Direct sow or transplant", "days_after_planting": 0},
+      {"task_title": "First flower thinning", "days_after_planting": 35},
+      {"task_title": "Begin frequent harvest", "days_after_planting": 45}
+    ],
+    "watering": {"frequency_days": 3},
+    "fertilizer": {"type": "balanced", "schedule_days": 21},
+    "harvest_window": {"start": 45, "end": 90}
+  }
+}

@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHarvester - Your Crop Tracker</title>
+    <style>
+        :root {
+            --primary-color: #5cb85c; --primary-darker: #4a934a; --text-color: #f8f9fa; --text-muted: #adb5bd;
+            --surface-color: rgba(44, 48, 52, 0.85); --border-color: #495057;
+            --day-bg-start: #87CEEB; --day-bg-end: #4682B4;
+            --evening-bg-start: #f7b733; --evening-bg-end: #fc4a1a;
+            --night-bg-start: #0c1445; --night-bg-end: #212529;
+            --sun-color: #f9d71c; --moon-color: #f4f6f0;
+        }
+        html { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; display: flex; flex-direction: column;
+            position: relative; color: var(--text-color);
+            transition: background 2s ease;
+            min-height: 100%;
+        }
+        body.day { background: linear-gradient(to bottom, var(--day-bg-start), var(--day-bg-end)) no-repeat; background-attachment: fixed; }
+        body.evening { background: linear-gradient(to bottom, var(--evening-bg-start), var(--evening-bg-end)) no-repeat; background-attachment: fixed; }
+        body.night { background: linear-gradient(to bottom, var(--night-bg-start), var(--night-bg-end)) no-repeat; background-attachment: fixed; }
+
+        .scene, #weather-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .forest-layer { position: absolute; bottom: 0; left: 0; width: 200%; height: 100%; background-repeat: repeat-x; background-position: bottom left; transition: background-image 2s ease-in-out; }
+        #sky-orb { position: absolute; top: 10%; right: 15%; width: 60px; height: 60px; border-radius: 50%; transition: all 2s ease; }
+        body.day #sky-orb { background: var(--sun-color); box-shadow: 0 0 30px var(--sun-color); }
+        body.evening #sky-orb { background: #ff8c00; box-shadow: 0 0 40px #ff8c00; }
+        body.night #sky-orb { background: var(--moon-color); box-shadow: 0 0 30px var(--moon-color); }
+
+        #forest-back { animation: parallax 60s linear infinite; z-index: 2; opacity: 0.6; }
+        #forest-mid { animation: parallax 40s linear infinite; z-index: 3; opacity: 0.8; }
+        #forest-front { animation: parallax 20s linear infinite; z-index: 4; }
+
+        .header, .main-content-wrapper, .footer { z-index: 10; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 1em 2em; background: rgba(0,0,0,0.1); backdrop-filter: blur(5px); border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+        .logo-title { display: flex; align-items: center; gap: 0.75em; }
+        .header-actions { margin-left: auto; display:flex; align-items:center; gap:10px; }
+        .logo svg { width: 40px; height: 40px; fill: var(--primary-color); }
+        h1 { margin: 0; font-size: 1.8em; }
+        .add-button { display: inline-flex; align-items: center; gap: 0.5em; background-image: linear-gradient(to right, var(--primary-color) 0%, var(--primary-darker) 100%); color: white; padding: 12px 20px; text-decoration: none; border-radius: 50px; font-weight: bold; white-space: nowrap; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease; }
+        .add-button:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(0,0,0,0.3); background-image: linear-gradient(to right, #6fbf6f 0%, #5cb85c 100%); }
+
+        /* New dashboard above columns */
+        .dashboard { max-width: 1200px; margin: 18px auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; z-index: 11; }
+        .dashboard .dash-card { background: var(--surface-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); display:flex; flex-direction:column; gap:6px; align-items:center; text-align:center; }
+        .dash-card .title { font-size:0.9em; color:var(--text-muted); }
+        .dash-card .value { font-weight:700; font-size:1.4em; color:var(--primary-color); }
+        .dash-wide { grid-column: span 2; display:flex; gap:12px; }
+        .timeline { max-height:120px; overflow:auto; }
+
+        .main-content-wrapper { display: flex; padding: 15px; gap: 10px; max-width: 1200px; margin: 0 auto; }
+        .footer { text-align: center; padding: 1em; font-size: 0.9em; color: var(--text-muted); background: rgba(0,0,0,0.2); backdrop-filter: blur(5px); flex-shrink: 0; }
+        .content-column { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .content-column h2 { color: var(--primary-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5em; margin: 0 0 10px 0; }
+        .planting-grid { perspective: 1000px; }
+        .planting-card { background: var(--surface-color); border-left: 4px solid var(--primary-color); border-radius: 8px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); margin-bottom: 10px; position: relative; display: flex; flex-direction: column; gap: 0.5em; transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
+        .card-top-header { text-align: center; margin-bottom: 0.25em; }
+        .card-top-header h3 { margin: 0; font-size: 1.1em; font-weight: bold; }
+        .card-top-header .batch-id { font-size: 0.8em; font-style: italic; color: var(--text-muted); }
+        .card-dates-row { display: flex; justify-content: space-between; align-items: center; gap: 1em; flex-wrap: nowrap; }
+        .date-group { font-size: 0.8em; color: var(--text-muted); white-space: nowrap; }
+        .card-notes { display: flex; flex-direction: column; gap: 0.5em; }
+        .card-notes h4 { margin: 0; color: var(--text-muted); font-size: 0.9em; font-weight: bold; }
+        .card-notes p { margin: 0; font-style: italic; white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em; }
+        .card-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 0.5em; }
+        .action-btn { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 0.9em; line-height: 26px; text-align: center; }
+        .card-steps { display: none; }
+
+        /* Header user menu / avatar */
+        .user-controls { display:flex; align-items:center; gap:10px; }
+        .avatar { width:44px; height:44px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:linear-gradient(180deg,var(--primary-color),var(--primary-darker)); color:#fff; font-weight:700; font-size:1rem; border:2px solid rgba(255,255,255,0.08); overflow:hidden; }
+        .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+        .user-menu { position:relative; }
+        .menu-btn { background:none; border:none; color:var(--text-color); cursor:pointer; padding:6px 8px; border-radius:6px; }
+        .menu-list { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface-color); border:1px solid var(--border-color); padding:6px; border-radius:8px; display:none; min-width:160px; }
+
+        /* Tips */
+        .tips { display:flex; flex-direction:column; gap:8px; }
+        .tip { background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; }
+
+        /* Modal styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: var(--surface-color); padding: 2em; border-radius: 12px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-top: 5px solid var(--primary-color); }
+        .modal-close { position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 2em; cursor: pointer; }
+        .form-row { display:flex; gap:10px; margin-bottom:10px; }
+        .form-row input, textarea, select { width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); background: rgba(255,255,255,0.02); color:var(--text-color); }
+
+        .empty-state { color: var(--text-muted); }
+
+        @media (max-width: 900px) {
+            .main-content-wrapper { flex-direction: column; overflow: auto; }
+            .header { flex-direction: column; gap: 1em; padding: 1em; }
+            .scene, #walking-deer { display: none; }
+            .dashboard { grid-template-columns: repeat(2,1fr); gap:10px; }
+        }
+
+        @keyframes parallax { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <div id="sky-orb"></div>
+        <div id="forest-back" class="forest-layer"></div>
+        <div id="forest-mid" class="forest-layer"></div>
+        <div id="forest-front" class="forest-layer"></div>
+    </div>
+    <div id="weather-container"></div>
+
+    <header class="header">
+        <div class="logo-title">
+            <a href="{% url 'index' %}" class="logo"><svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12C2,16.18 4.7,20.45 8.8,21.8L8.05,20.1C4.83,18.91 2.94,15.5 3.06,12.06C3.3,8.68 5.8,5.85 9.14,5.14C14.14,4.19 18.81,7.86 18.94,12.86C19.06,16.5 16.94,19.79 13.7,21.05L13,21.8C17.7,20.45 22,16.18 22,12A10,10 0 0,0 12,2M11,11.5A1.5,1.5 0 0,1 9.5,13A1.5,1.5 0 0,1 8,11.5A1.5,1.5 0 0,1 9.5,10A1.5 1.5 0 0 1 11,11.5M16,11.5A1.5,1.5 0 0,1 14.5,13A1.5,1.5 0 0,1 13,11.5A1.5,1.5 0 0,1 14.5,10A1.5 1.5 0 0 1 16,11.5M12,6A1.5,1.5 0 0,1 13.5,7.5A1.5,1.5 0 0,1 12,9A1.5,1.5 0 0,1 10.5,7.5A1.5,1.5 0 0,1 12,6Z"></path></svg></a>
+            <h1>TerraTrack</h1>
+        </div>
+
+        <div class="header-actions">
+            <button id="dashboard-btn" class="add-button" style="background:#4a934a;">
+                Dashboard
+            </button>
+
+            <a href="{% url 'add_planting' %}" class="add-button">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"></path></svg>
+                Add New Planting
+            </a>
+
+            <button id="notification-btn" class="action-btn" style="width:35px; height:35px; font-size:1.2em;" title="Click to view notifications | Right-click to toggle on/off">{% if notifications_enabled %}🔔{% else %}🔕{% endif %}</button>
+
+            <div id="profile-icon" class="avatar" style="cursor:pointer; width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-weight:bold;">
+                {{ user.username|slice:":2"|upper }}
+            </div>
+        </div>
+    </header>
+
+    <!-- Dashboard placed ABOVE the 3 planting columns as requested -->
+    <section class="dashboard" aria-label="Dashboard" style="display:none;">
+        <!-- dashboard hidden; now shown only via modal -->
+    </section>
+
+    <main class="main-content-wrapper">
+        <!-- Upcoming Harvests Column -->
+        <div class="content-column">
+            <h2>Upcoming Harvests</h2>
+            <div class="planting-grid">
+                {% for planting in upcoming %}
+                <div class="planting-card" data-id="{{ planting.id }}">
+                    <div class="card-actions">
+                        <a href="{% url 'edit_planting' planting.id %}" class="action-btn edit-btn" title="Edit" onclick="event.stopPropagation();">✎</a>
+                        <form action="{% url 'delete_planting' planting.id %}" method="post" style="margin:0;" onclick="event.stopPropagation();">
+                            {% csrf_token %}
+                            <button type="submit" class="action-btn delete-btn" title="Delete">×</button>
+                        </form>
+                    </div>
+                    <div class="card-top-header">
+                        <h3>{{ planting.crop_name }}</h3>
+                        {% if planting.batch_id %}
+                        <div class="batch-id">Batch ID: {{ planting.batch_id }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="card-dates-row">
+                        <div class="date-group">
+                            <strong>Planted Date:</strong> {{ planting.planting_date|date:"M d, Y" }}
+                        </div>
+                        {% if planting.harvest_date %}
+                        <div class="date-group">
+                            <strong>Harvest Date:</strong> {{ planting.harvest_date|date:"M d, Y" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% comment %} Image display: prefer planting.image_url (Dynamo / S3 return), fallback to ImageField on model {% endcomment %}
+                    {% if planting.image_url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image_url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% elif planting.image and planting.image.url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image.url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% endif %}
+
+                    {% if planting.notes %}
+                    <div class="card-notes">
+                        <h4>Notes:</h4>
+                        <p>{{ planting.notes }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="card-steps" style="display:none;" data-planting-id="{{ planting.id }}" data-crop-name="{{ planting.crop_name }}" data-plan-count="{% if planting.plan %}{{ planting.plan|length }}{% else %}0{% endif %}">
+                        {% if planting.plan and planting.plan|length > 0 %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                            {% for task_item in planting.plan %}
+                                <li style="margin: 8px 0; padding: 4px 0; list-style: none;">
+                                    <strong>{{ task_item.task|default:"Task" }}</strong>
+                                    {% if task_item.due_date %}
+                                        <span style="color: #5cb85c; margin-left: 8px;">
+                                            ({{ task_item.due_date|date:"M d" }})
+                                        </span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="list-style: none;"><em>No steps available.</em></li>
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-state">No plantings in this category.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Ongoing Harvests Column -->
+        <div class="content-column">
+            <h2>Ongoing Harvests</h2>
+            <div class="planting-grid">
+                {% for planting in ongoing %}
+                <div class="planting-card" data-id="{{ planting.id }}">
+                    <div class="card-actions">
+                        <a href="{% url 'edit_planting' planting.id %}" class="action-btn edit-btn" title="Edit" onclick="event.stopPropagation();">✎</a>
+                        <form action="{% url 'delete_planting' planting.id %}" method="post" style="margin:0;" onclick="event.stopPropagation();">
+                            {% csrf_token %}
+                            <button type="submit" class="action-btn delete-btn" title="Delete">×</button>
+                        </form>
+                    </div>
+                    <div class="card-top-header">
+                        <h3>{{ planting.crop_name }}</h3>
+                        {% if planting.batch_id %}
+                        <div class="batch-id">Batch ID: {{ planting.batch_id }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="card-dates-row">
+                        <div class="date-group">
+                            <strong>Planted Date:</strong> {{ planting.planting_date|date:"M d, Y" }}
+                        </div>
+                        {% if planting.harvest_date %}
+                        <div class="date-group">
+                            <strong>Harvest Date:</strong> {{ planting.harvest_date|date:"M d, Y" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if planting.image_url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image_url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% elif planting.image and planting.image.url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image.url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% endif %}
+
+                    {% if planting.notes %}
+                    <div class="card-notes">
+                        <h4>Notes:</h4>
+                        <p>{{ planting.notes }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="card-steps" style="display:none;" data-planting-id="{{ planting.id }}" data-crop-name="{{ planting.crop_name }}" data-plan-count="{% if planting.plan %}{{ planting.plan|length }}{% else %}0{% endif %}">
+                        {% if planting.plan and planting.plan|length > 0 %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                            {% for task_item in planting.plan %}
+                                <li style="margin: 8px 0; padding: 4px 0; list-style: none;">
+                                    <strong>{{ task_item.task|default:"Task" }}</strong>
+                                    {% if task_item.due_date %}
+                                        <span style="color: #5cb85c; margin-left: 8px;">
+                                            ({{ task_item.due_date|date:"M d" }})
+                                        </span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="list-style: none;"><em>No steps available.</em></li>
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-state">No other ongoing plantings.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Past Harvests Column -->
+        <div class="content-column">
+            <h2>Past Harvests</h2>
+            <div class="planting-grid">
+                {% for planting in past %}
+                <div class="planting-card" data-id="{{ planting.id }}">
+                    <div class="card-actions">
+                        <a href="{% url 'edit_planting' planting.id %}" class="action-btn edit-btn" title="Edit" onclick="event.stopPropagation();">✎</a>
+                        <form action="{% url 'delete_planting' planting.id %}" method="post" style="margin:0;" onclick="event.stopPropagation();">
+                            {% csrf_token %}
+                            <button type="submit" class="action-btn delete-btn" title="Delete">×</button>
+                        </form>
+                    </div>
+                    <div class="card-top-header">
+                        <h3>{{ planting.crop_name }}</h3>
+                        {% if planting.batch_id %}
+                        <div class="batch-id">Batch ID: {{ planting.batch_id }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="card-dates-row">
+                        <div class="date-group">
+                            <strong>Planted Date:</strong> {{ planting.planting_date|date:"M d, Y" }}
+                        </div>
+                        {% if planting.harvest_date %}
+                        <div class="date-group">
+                            <strong>Harvest Date:</strong> {{ planting.harvest_date|date:"M d, Y" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if planting.image_url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image_url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% elif planting.image and planting.image.url %}
+                      <div class="plant-image" style="text-align:center;">
+                        <img src="{{ planting.image.url }}" alt="{{ planting.crop_name }}" style="max-width:220px; max-height:220px; border-radius:10px; margin:10px 0;" />
+                      </div>
+                    {% endif %}
+
+                    {% if planting.notes %}
+                    <div class="card-notes">
+                        <h4>Notes:</h4>
+                        <p>{{ planting.notes }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="card-steps" style="display:none;" data-planting-id="{{ planting.id }}" data-crop-name="{{ planting.crop_name }}" data-plan-count="{% if planting.plan %}{{ planting.plan|length }}{% else %}0{% endif %}">
+                        {% if planting.plan and planting.plan|length > 0 %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                            {% for task_item in planting.plan %}
+                                <li style="margin: 8px 0; padding: 4px 0; list-style: none;">
+                                    <strong>{{ task_item.task|default:"Task" }}</strong>
+                                    {% if task_item.due_date %}
+                                        <span style="color: #5cb85c; margin-left: 8px;">
+                                            ({{ task_item.due_date|date:"M d" }})
+                                        </span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="list-style: none;"><em>No steps available.</em></li>
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-state">No past harvests yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">Sow, Grow, Crop.</footer>
+
+<!-- Dashboard Modal -->
+<div id="dashboard-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" style="max-width: 620px; border-radius:16px; box-shadow: 0 18px 45px rgba(0,0,0,0.6); background: radial-gradient(circle at top left, rgba(92,184,92,0.35), rgba(15,23,42,0.95));">
+        <button class="modal-close" onclick="closeDashboard()">&times;</button>
+        <h2 style="color: var(--primary-color); margin: 0 0 6px 0;">Dashboard Overview</h2>
+        <p style="margin:0 0 16px 0; color:var(--text-muted); font-size:0.9em;">Quick snapshot of your crops and harvests.</p>
+
+        <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; margin-top:10px;">
+            <div class="dash-card" style="box-shadow:0 10px 25px rgba(0,0,0,0.55); transform: translateY(0); align-items:center; text-align:center;">
+                <div class="title">Total Plantings</div>
+                <div class="value">{{ stats.total_plantings|default:0 }}</div>
+                <small style="font-size:0.75em; color:var(--text-muted);">All batches you've tracked</small>
+            </div>
+            <div class="dash-card" style="box-shadow:0 10px 25px rgba(0,0,0,0.55); align-items:center; text-align:center;">
+                <div class="title">Active / Upcoming</div>
+                <div class="value">{{ ongoing|length }} / {{ upcoming|length }}</div>
+                <small style="font-size:0.75em; color:var(--text-muted);">Currently growing / planned</small>
+            </div>
+            <div class="dash-card" style="box-shadow:0 10px 25px rgba(0,0,0,0.55); align-items:center; text-align:center;">
+                <div class="title">Completed Cycles</div>
+                <div class="value">{{ stats.completed_cycles|default:0 }}</div>
+                <small style="font-size:0.75em; color:var(--text-muted);">Finished from seed to harvest</small>
+            </div>
+            <div class="dash-card" style="box-shadow:0 10px 25px rgba(0,0,0,0.55); align-items:center; text-align:center;">
+                <div class="title">Average Yield</div>
+                <div class="value">{{ stats.avg_yield|default:'-' }}</div>
+                <small style="font-size:0.75em; color:var(--text-muted);">Per completed planting</small>
+            </div>
+        </div>
+
+        <div style="margin-top:18px; display:grid; grid-template-columns:2fr 1fr; gap:16px; align-items:stretch;">
+            <div class="dash-card" style="box-shadow:0 12px 30px rgba(0,0,0,0.55); align-items:center; text-align:center;">
+                <div class="title">Next Harvest</div>
+                <div class="value" style="font-size:1.1em;">
+                    {% if stats.next_harvest %}
+                        {{ stats.next_harvest.crop_name }} — {{ stats.next_harvest.harvest_date|date:"M d, Y" }}
+                    {% else %}
+                        No scheduled harvest yet
+                    {% endif %}
+                </div>
+                <small style="font-size:0.8em; color:var(--text-muted);">The closest harvest date in your schedule.</small>
+            </div>
+            <div class="dash-card" style="box-shadow:0 12px 30px rgba(0,0,0,0.55); display:flex; flex-direction:column; justify-content:center; gap:6px; align-items:center; text-align:center;">
+                <div style="font-size:0.85em; color:var(--text-muted);">Snapshot</div>
+                <div style="font-size:0.9em;">
+                    <div><strong>Active:</strong> {{ ongoing|length }}</div>
+                    <div><strong>Upcoming:</strong> {{ upcoming|length }}</div>
+                    <div><strong>Completed:</strong> {{ stats.completed_cycles|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Modal -->
+<div id="notification-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeNotification()">&times;</button>
+        <h2 style="color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 10px;">
+            <span>🔔</span>
+            <span>Notifications</span>
+            <span id="notification-count-badge" style="background: var(--primary-color); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; display: none;">0</span>
+        </h2>
+        <div id="notification-content" style="min-height: 100px;">
+            <p style="color: var(--text-muted); text-align: center; padding: 20px;">
+                <span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></span>
+                Loading notifications...
+            </p>
+        </div>
+        <div id="notification-email-summary" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); display: none;">
+            <h3 style="color: var(--primary-color); font-size: 1.1em; margin-bottom: 10px;">Email Summary</h3>
+            <pre id="email-summary-text" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; white-space: pre-wrap; font-family: inherit; font-size: 0.9em; color: var(--text-color);"></pre>
+        </div>
+    </div>
+</div>
+<style>
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+    <!-- Details modal for plantings -->
+    <div id="details-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <button id="modal-close-btn" class="modal-close" aria-label="Close">&times;</button>
+            <h2 id="modal-title"></h2>
+            <div id="modal-notes"></div>
+            <h4>Steps to be followed:</h4>
+            <ul id="modal-steps-list"></ul>
+        </div>
+    </div>
+
+    <!-- Profile edit modal -->
+    <div id="profile-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <button id="profile-modal-close" class="modal-close">&times;</button>
+            <h2>Edit Profile</h2>
+            <form action="{% url 'profile' %}" method="post">
+                {% csrf_token %}
+                <div class="form-row">
+                    <input type="text" name="username" id="profile-username" placeholder="Username" value="{{ user.username }}" autocomplete="username" />
+                </div>
+                <div class="form-row">
+                    <input type="email" name="email" id="profile-email" placeholder="Email" value="{{ user.email }}" autocomplete="email" />
+                </div>
+                <div class="form-row">
+                    <input type="password" name="password" id="profile-password" placeholder="New password (optional)" autocomplete="new-password" />
+                </div>
+                <div style="display:flex; gap:8px; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <a href="{% url 'logout' %}" class="add-button" style="background:transparent; border:1px solid var(--border-color); color:var(--text-color); text-decoration:none; text-align:center;">
+                        Logout
+                    </a>
+                    <button type="submit" class="add-button">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Scene + background management (kept from original)
+            const body = document.body;
+            const weatherContainer = document.getElementById('weather-container');
+            const timesOfDay = ['day', 'evening', 'night'];
+            const weatherTypes = ['clear', 'rain', 'snow', 'breezy'];
+            const backgroundThemes = {
+                forest: { back: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%232c3e50\" d=\"M0 200 V120 C100 110, 150 130, 250 125 S400 110, 500 120 S650 140, 800 130 V200 Z\" /></svg>')", mid: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%2334495e\" d=\"M0 200 V140 C80 150, 180 130, 280 135 S450 160, 550 150 S700 130, 800 140 V200 Z\" /></svg>')", front: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%231e2b37\" d=\"M0 200 V160 C120 150, 220 170, 320 165 S500 140, 600 150 S750 170, 800 160 V200 Z\" /></svg>')" },
+                hills: { back: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%236a89cc\" d=\"M0 200 V100 C150 50, 250 150, 400 120 S550 100, 700 150 L800 140 V200 Z\" /></svg>')", mid: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%234a69bd\" d=\"M0 200 V130 C100 180, 200 100, 350 140 S500 180, 650 120 L800 150 V200 Z\" /></svg>')", front: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%231e3799\" d=\"M0 200 V160 C150 140, 250 180, 400 170 S550 150, 700 160 L800 150 V200 Z\" /></svg>')" },
+                agri: { back: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%23f39c12\" d=\"M0 200 V180 H800 V200 Z\" /></svg>')", mid: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%23e67e22\" d=\"M0 200 V190 H800 V200 Z\" /></svg>')", front: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 200\"><path fill=\"%23d35400\" d=\"M0 200 V195 H800 V200 Z\" /></svg>')" }
+            };
+            let timeIndex = 0, weatherIndex = 0, backgroundIndex = 0;
+            function setTimeOfDay() { body.classList.remove(...timesOfDay); const newTime = timesOfDay[timeIndex]; body.classList.add(newTime); timeIndex = (timeIndex + 1) % timesOfDay.length; }
+            function setWeather() { weatherContainer.innerHTML = ''; const newWeather = weatherTypes[weatherIndex]; weatherIndex = (weatherIndex + 1) % weatherTypes.length; }
+            function setBackground() { const themeName = Object.keys(backgroundThemes)[backgroundIndex]; const theme = backgroundThemes[themeName]; document.getElementById('forest-back').style.backgroundImage = theme.back; document.getElementById('forest-mid').style.backgroundImage = theme.mid; document.getElementById('forest-front').style.backgroundImage = theme.front; backgroundIndex = (backgroundIndex + 1) % Object.keys(backgroundThemes).length; }
+            setTimeOfDay(); setWeather(); setBackground();
+            setInterval(setTimeOfDay, 5 * 60 * 1000); setInterval(setWeather, 2 * 60 * 1000); setInterval(setBackground, 10 * 60 * 1000);
+
+            // Header menu toggle (defensive - elements may not exist)
+            const menuToggle = document.getElementById('menu-toggle');
+            const menuList = document.getElementById('menu-list');
+            if (menuToggle && menuList) {
+                menuToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    menuList.style.display = menuList.style.display === 'block' ? 'none' : 'block';
+                });
+                document.addEventListener('click', () => { if (menuList) menuList.style.display = 'none'; });
+            }
+
+            // Modal: planting details
+            const modal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalNotes = document.getElementById('modal-notes');
+            const modalStepsList = document.getElementById('modal-steps-list');
+            const closeModalBtn = document.getElementById('modal-close-btn');
+
+            // Attach planting-card click handlers
+            document.querySelectorAll('.planting-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const title = card.querySelector('h3') ? card.querySelector('h3').textContent : 'Details';
+                    const notesDiv = card.querySelector('.card-notes');
+                    const stepsDiv = card.querySelector('.card-steps');
+                    
+                    // Debug: Log card info
+                    if (stepsDiv) {
+                        const cropName = stepsDiv.getAttribute('data-crop-name') || 'Unknown';
+                        const planCount = stepsDiv.getAttribute('data-plan-count') || '0';
+                        console.log('🔍 Card clicked:', title, '| Crop:', cropName, '| Plan count:', planCount);
+                    }
+                    
+                    // Get steps HTML - extract the <ul> content from the steps div
+                    let stepsHTML = '';
+                    if (stepsDiv) {
+                        // Get the innerHTML which should contain the <ul> with <li> items
+                        stepsHTML = stepsDiv.innerHTML.trim();
+                        console.log('📋 Steps HTML for', title, ':', stepsHTML.length, 'chars');
+                        console.log('📋 Full Steps HTML:', stepsHTML);
+                        
+                        // Check if it contains actual step items
+                        if (stepsHTML.includes('<strong>')) {
+                            console.log('✅ Steps HTML contains <strong> tags - has task items');
+                        } else {
+                            console.log('⚠️ Steps HTML does not contain <strong> tags - may be empty');
+                        }
+                    } else {
+                        console.log('❌ Steps div not found for', title);
+                    }
+                    
+                    // Extract <li> elements from the steps HTML
+                    let stepsListHTML = '';
+                    if (stepsHTML && stepsHTML.length > 0) {
+                        // Check if it contains a <ul> wrapper
+                        if (stepsHTML.includes('<ul')) {
+                            // Extract just the <li> elements from the <ul>
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = stepsHTML;
+                            const ulElement = tempDiv.querySelector('ul');
+                            if (ulElement && ulElement.innerHTML.trim().length > 0) {
+                                stepsListHTML = ulElement.innerHTML;
+                                console.log('✅ Extracted steps from <ul> for', title, '-', stepsListHTML.split('<li').length - 1, 'items');
+                                console.log('✅ First item:', stepsListHTML.substring(0, 100));
+                            } else {
+                                stepsListHTML = stepsHTML;
+                                console.log('⚠️ No <ul> found, using HTML directly');
+                            }
+                        } else {
+                            // Directly use the HTML (should be <li> elements)
+                            stepsListHTML = stepsHTML;
+                            console.log('✅ Using steps HTML directly for', title);
+                        }
+                    }
+                    
+                    // If no valid steps found, use default message
+                    if (!stepsListHTML || stepsListHTML.length === 0 || 
+                        (stepsListHTML.includes('No steps available') && !stepsListHTML.includes('<strong>'))) {
+                        stepsListHTML = '<li style="list-style: none; margin: 8px 0; padding: 4px 0;"><em>No steps available.</em></li>';
+                        console.log('⚠️ No valid steps found for', title, '- using default message');
+                    }
+                    
+                    // Set modal content
+                    modalTitle.textContent = title;
+                    modalNotes.innerHTML = notesDiv ? notesDiv.innerHTML : '<p>No notes available.</p>';
+                    
+                    // Clear and set steps - ensure it's properly formatted
+                    modalStepsList.innerHTML = '';
+                    if (stepsListHTML.trim().length > 0) {
+                        modalStepsList.innerHTML = stepsListHTML;
+                        const stepCount = modalStepsList.querySelectorAll('li').length;
+                        console.log('✅ Modal steps list populated:', stepCount, 'items for', title);
+                        if (stepCount > 0) {
+                            const firstStep = modalStepsList.querySelector('li');
+                            console.log('✅ First step text:', firstStep ? firstStep.textContent.trim().substring(0, 60) : 'none');
+                        }
+                    } else {
+                        modalStepsList.innerHTML = '<li style="list-style: none; margin: 8px 0; padding: 4px 0;"><em>No steps available.</em></li>';
+                        console.log('⚠️ Empty steps HTML, using fallback');
+                    }
+
+                    modal.style.display = 'flex';
+                    modal.setAttribute('aria-hidden', 'false');
+                });
+            });
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', () => { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); });
+            }
+            if (modal) {
+                modal.addEventListener('click', (event) => { if (event.target === modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); } });
+            }
+
+            // Profile modal logic
+            const profileModal = document.getElementById('profile-modal');
+            const profileIcon = document.getElementById('profile-icon');
+            const profileClose = document.getElementById('profile-modal-close');
+            if (profileIcon) profileIcon.addEventListener('click', (e) => { e.stopPropagation(); profileModal.style.display = 'flex'; profileModal.setAttribute('aria-hidden','false'); });
+            if (profileClose) profileClose.addEventListener('click', () => { profileModal.style.display = 'none'; profileModal.setAttribute('aria-hidden','true'); });
+            if (profileModal) {
+                profileModal.addEventListener('click', (event) => { if (event.target === profileModal) { profileModal.style.display = 'none'; profileModal.setAttribute('aria-hidden','true'); } });
+            }
+
+            // Avatar fallback: if no image, show initials (safe selector)
+            const avatarEl = document.getElementById('profile-icon');
+            const avatarImg = avatarEl ? avatarEl.querySelector('img') : null;
+            function serverInitials() {
+                return ("{{ user.get_full_name|default:user.username|slice:':2' }}").toUpperCase();
+            }
+            if (avatarImg) {
+                avatarImg.addEventListener('error', () => { if (avatarEl) avatarEl.textContent = serverInitials(); });
+            } else {
+                if (avatarEl && avatarEl.textContent.trim().length === 0) avatarEl.textContent = serverInitials();
+            }
+
+            // Allow Esc to close modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    [modal, profileModal].forEach(m => { if (m && m.style.display === 'flex') { m.style.display = 'none'; m.setAttribute('aria-hidden','true'); } });
+                }
+            });
+
+            // Truncate long timeline messages and add a more button
+            document.querySelectorAll('.timeline div').forEach(item => {
+                const msg = item.querySelector('div:nth-child(2) div');
+                if (msg && msg.textContent && msg.textContent.length > 140) {
+                    const full = msg.textContent;
+                    msg.textContent = full.slice(0,140) + '...';
+                    const more = document.createElement('button'); more.className='menu-btn'; more.style.fontSize='0.8em'; more.textContent='more';
+                    more.addEventListener('click', () => { msg.textContent = full; more.style.display='none'; });
+                    item.appendChild(more);
+                }
+            });
+
+            // Hook dashboard open button (safe - element exists in this template)
+            const dashboardBtnLocal = document.getElementById('dashboard-btn');
+            if (dashboardBtnLocal) {
+                dashboardBtnLocal.addEventListener('click', () => {
+                    const dashModal = document.getElementById('dashboard-modal');
+                    if (dashModal) dashModal.style.display = 'flex';
+                });
+            }
+        });
+
+    // Notification functions and global handlers (outside DOMContentLoaded so URLs/templates vars available)
+    let notificationsEnabled = {{ notifications_enabled|yesno:"true,false" }};
+
+    async function toggleNotifications() {
+        const newState = !notificationsEnabled;
+
+        try {
+            const response = await fetch('{% url "toggle_notifications" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ enabled: newState })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                notificationsEnabled = newState;
+                const btn = document.getElementById('notification-btn');
+                if (btn) {
+                    btn.textContent = newState ? '🔔' : '🔕';
+                    btn.title = newState ? 'Notifications enabled - Click to disable' : 'Notifications disabled - Click to enable';
+                }
+
+                // Small user feedback (could be replaced with a nicer toast)
+                alert(newState ? '✓ Notifications enabled! You will receive harvest reminders via email.' : 'Notifications disabled. You will no longer receive reminders.');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to update notification preference'));
+            }
+        } catch (error) {
+            console.error('Error toggling notifications:', error);
+            alert('Error: Failed to update notification preference. Please try again.');
+        }
+    }
+
+    // Notification button - click to open modal, right-click or long-press to toggle
+    const notificationBtn = document.getElementById('notification-btn');
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openNotificationModal();
+        });
+        
+        // Right-click to toggle notifications
+        notificationBtn.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleNotifications();
+        });
+        
+        notificationBtn.title = 'Click to view notifications | Right-click to toggle on/off';
+    }
+    
+    // Load notifications on page load to update badge (silently, without opening modal)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateNotificationBadgeSilently);
+    } else {
+        // DOM already loaded
+        updateNotificationBadgeSilently();
+    }
+    
+    // Function to silently update notification badge without opening modal
+    async function updateNotificationBadgeSilently() {
+        try {
+            const response = await fetch('{% url "get_notification_summaries" %}', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success !== false && data.notifications !== undefined) {
+                    const notifications = data.notifications || [];
+                    const unreadCount = data.unread_count || 0;
+                    
+                    // Update badge on notification button
+                    const btnBadge = document.getElementById('notification-btn-badge');
+                    if (btnBadge) {
+                        if (unreadCount > 0 || notifications.length > 0) {
+                            const displayCount = unreadCount > 0 ? unreadCount : notifications.length;
+                            btnBadge.textContent = displayCount > 99 ? '99+' : displayCount;
+                            btnBadge.style.display = 'flex';
+                            btnBadge.style.background = unreadCount > 0 ? '#ff6b6b' : 'var(--primary-color)';
+                            console.log(`🔔 Badge updated: ${displayCount} notification(s), ${unreadCount} unread`);
+                            
+                            // Play sound if there are unread notifications (only on page load, not on every check)
+                            if (unreadCount > 0 && typeof window.justLoaded !== 'undefined' && window.justLoaded) {
+                                playNotificationSound();
+                                window.justLoaded = false; // Only play once per page load
+                            }
+                        } else {
+                            btnBadge.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating notification badge:', error);
+        }
+    }
+    
+    // Mark that page just loaded (for sound notification)
+    window.justLoaded = true;
+
+    function closeDashboard() {
+        const dm = document.getElementById('dashboard-modal');
+        if (dm) dm.style.display = 'none';
+    }
+    function closeNotification() {
+        const nm = document.getElementById('notification-modal');
+        if (nm) {
+            nm.style.display = 'none';
+            nm.setAttribute('aria-hidden', 'true');
+        }
+    }
+    
+    // Play notification sound when new notifications arrive
+    function playNotificationSound() {
+        try {
+            // Create audio context for notification sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create a pleasant notification sound (two-tone chime)
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // First tone (higher pitch)
+            oscillator1.frequency.value = 800;
+            oscillator1.type = 'sine';
+            
+            // Second tone (lower pitch)
+            oscillator2.frequency.value = 600;
+            oscillator2.type = 'sine';
+            
+            // Volume envelope
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            // Play first tone
+            oscillator1.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.2);
+            
+            // Play second tone slightly after
+            oscillator2.start(audioContext.currentTime + 0.1);
+            oscillator2.stop(audioContext.currentTime + 0.3);
+            
+            console.log('🔔 Notification sound played');
+        } catch (error) {
+            console.warn('Could not play notification sound:', error);
+            // Fallback: try simple beep
+            try {
+                const beep = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OSfTQ8OUKbl8LZjHAY4kdfyzHksBSR3x/DdkEAKFF606euoVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDkn00PDlCm5fC2YxwGOJHX8sx5LAUkd8fw3ZBAC');
+                beep.volume = 0.3;
+                beep.play().catch(e => console.warn('Beep fallback failed:', e));
+            } catch (e) {
+                console.warn('All sound methods failed:', e);
+            }
+        }
+    }
+
+    // Load and display notification summaries
+    async function loadNotificationSummaries() {
+        const contentDiv = document.getElementById('notification-content');
+        const emailSummaryDiv = document.getElementById('notification-email-summary');
+        const emailSummaryText = document.getElementById('email-summary-text');
+        const countBadge = document.getElementById('notification-count-badge');
+        
+        // If modal is not open, just update badge (silent load)
+        const isModalOpen = contentDiv && contentDiv.closest('#notification-modal') && 
+                           contentDiv.closest('#notification-modal').style.display === 'flex';
+        
+        if (!contentDiv) {
+            // Content div doesn't exist yet (modal not opened), just update badge silently
+            console.log('🔔 Loading notifications silently for badge update...');
+        } else if (isModalOpen) {
+            // Show loading state only if modal is open
+            contentDiv.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;"><span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-color); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></span> Loading notifications...</p>';
+        }
+        
+        try {
+            console.log('🔔 Fetching notifications from API...');
+            const response = await fetch('{% url "get_notification_summaries" %}', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('✅ Notification API Response:', data);
+            
+            if (data.success !== false && data.notifications !== undefined) {
+                const notifications = data.notifications || [];
+                const unreadCount = data.unread_count || 0;
+                
+                console.log(`📊 Total notifications: ${notifications.length}, Unread: ${unreadCount}`);
+                
+                // Play sound notification if there are new unread notifications
+                if (unreadCount > 0) {
+                    playNotificationSound();
+                }
+                
+                // Always update badge (even if modal is not open)
+                
+                // Update badge in modal header
+                if (countBadge) {
+                    if (notifications.length > 0) {
+                        countBadge.textContent = notifications.length;
+                        countBadge.style.display = 'inline-block';
+                        if (unreadCount > 0) {
+                            countBadge.style.background = '#ff6b6b';
+                        } else {
+                            countBadge.style.background = 'var(--primary-color)';
+                        }
+                    } else {
+                        countBadge.style.display = 'none';
+                    }
+                }
+                
+                // Update badge on notification button
+                const btnBadge = document.getElementById('notification-btn-badge');
+                if (btnBadge) {
+                    if (unreadCount > 0) {
+                        btnBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                        btnBadge.style.display = 'flex';
+                    } else {
+                        btnBadge.style.display = 'none';
+                    }
+                }
+                
+                if (notifications.length === 0) {
+                    console.log('ℹ️ No notifications found - showing empty state');
+                    contentDiv.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">🎉</div>
+                            <p style="color: var(--text-muted); font-size: 1.1em; margin-bottom: 5px;">All caught up!</p>
+                            <p style="color: var(--text-muted); font-size: 0.9em;">No notifications at this time.</p>
+                        </div>
+                    `;
+                    if (emailSummaryDiv) emailSummaryDiv.style.display = 'none';
+                } else {
+                    let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+                    
+                    if (unreadCount > 0) {
+                        html += `<div style="background: rgba(255, 107, 107, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: center; color: #ff6b6b; font-weight: bold; border: 1px solid rgba(255, 107, 107, 0.3);">
+                            🔴 You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}
+                        </div>`;
+                    }
+                    
+                    notifications.forEach((notif, index) => {
+                        const notifType = notif.type || 'info';
+                        const isRead = notif.read || false;
+                        const opacity = isRead ? '0.6' : '1.0';
+                        
+                        // Determine color based on notification type
+                        let borderColor = '#5cb85c'; // default green
+                        let icon = '🔔';
+                        
+                        if (notifType === 'plant_added') {
+                            borderColor = '#5cb85c';
+                            icon = '➕';
+                        } else if (notifType === 'plant_edited') {
+                            borderColor = '#4a90e2';
+                            icon = '✏️';
+                        } else if (notifType === 'plant_deleted') {
+                            borderColor = '#ff6b6b';
+                            icon = '🗑️';
+                        } else if (notifType === 'harvest_reminder') {
+                            borderColor = '#ffa500';
+                            icon = '🌾';
+                        } else if (notifType === 'step_reminder') {
+                            const daysUntil = notif.days_until || 0;
+                            borderColor = daysUntil === 0 ? '#ff6b6b' : (daysUntil <= 2 ? '#ffa500' : '#5cb85c');
+                            icon = '📅';
+                        }
+                        
+                        const daysText = notif.days_until !== undefined && notif.days_until !== null
+                            ? (notif.days_until === 0 ? 'Today' : 
+                               notif.days_until === 1 ? 'Tomorrow' : 
+                               `In ${notif.days_until} days`)
+                            : '';
+                        
+                        html += `
+                            <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 8px; border-left: 4px solid ${borderColor}; opacity: ${opacity}; transition: opacity 0.2s; ${!isRead ? 'box-shadow: 0 2px 8px rgba(92,184,92,0.3);' : ''}">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                        <span style="font-size: 1.4em; line-height: 1;">${icon}</span>
+                                        <div style="flex: 1;">
+                                            <strong style="color: var(--primary-color); font-size: 1.05em; display: block; margin-bottom: 2px;">${notif.title || 'Notification'}</strong>
+                                            ${!isRead ? '<span style="background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; font-weight: bold; margin-left: 5px;">NEW</span>' : ''}
+                                        </div>
+                                    </div>
+                                    ${daysText ? `<span style="color: ${borderColor}; font-weight: bold; font-size: 0.9em; white-space: nowrap; margin-left: 10px;">${daysText}</span>` : ''}
+                                </div>
+                                ${notif.message ? `<div style="color: var(--text-color); margin-bottom: 8px; line-height: 1.5;">${notif.message}</div>` : ''}
+                                <div style="color: var(--text-muted); font-size: 0.85em; display: flex; gap: 12px; flex-wrap: wrap;">
+                                    ${notif.created_at ? `<span>📅 ${notif.created_at}</span>` : ''}
+                                    ${notif.due_date ? `<span>⏰ Due: ${notif.due_date}</span>` : ''}
+                                    ${notif.crop_name ? `<span>🌱 ${notif.crop_name}</span>` : ''}
+                                </div>
+                                ${notif.planting_id ? `<div style="color: var(--text-muted); font-size: 0.8em; margin-top: 4px;">ID: ${notif.planting_id}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    contentDiv.innerHTML = html;
+                    
+                    // Show email summary
+                    if (data.email_summary && emailSummaryDiv && emailSummaryText) {
+                        emailSummaryText.textContent = data.email_summary;
+                        emailSummaryDiv.style.display = 'block';
+                    } else {
+                        if (emailSummaryDiv) emailSummaryDiv.style.display = 'none';
+                    }
+                }
+            } else {
+                console.error('❌ API returned success=false:', data);
+                const errorMsg = data.error || 'Unknown error';
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="color: #ff6b6b; font-size: 2em; margin-bottom: 10px;">⚠️</div>
+                        <p style="color: var(--text-muted); margin-bottom: 5px;">Unable to load notifications</p>
+                        <p style="color: var(--text-muted); font-size: 0.9em;">${errorMsg}</p>
+                        <button onclick="loadNotificationSummaries()" style="margin-top: 15px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">Retry</button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('❌ Error loading notification summaries:', error);
+            console.error('Error details:', error.message, error.stack);
+            contentDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="color: #ff6b6b; font-size: 2em; margin-bottom: 10px;">❌</div>
+                    <p style="color: var(--text-muted); margin-bottom: 5px;">Error loading notifications</p>
+                    <p style="color: var(--text-muted); font-size: 0.9em;">${error.message || 'Please try again later'}</p>
+                    <button onclick="loadNotificationSummaries()" style="margin-top: 15px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">Retry</button>
+                </div>
+            `;
+        }
+    }
+
+    // Open notification modal and load summaries
+    function openNotificationModal() {
+        console.log('🔔 Opening notification modal...');
+        const nm = document.getElementById('notification-modal');
+        if (nm) {
+            nm.style.display = 'flex';
+            nm.setAttribute('aria-hidden', 'false');
+            loadNotificationSummaries();
+        } else {
+            console.error('❌ Notification modal element not found!');
+        }
+    }
+    
+    // Close notification modal when clicking outside
+    document.addEventListener('click', function(event) {
+        const nm = document.getElementById('notification-modal');
+        if (nm && event.target === nm) {
+            closeNotification();
+        }
+    });
+    
+    // Play notification sound when new notifications arrive
+    function playNotificationSound() {
+        try {
+            // Create audio context for notification sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create a pleasant notification sound (two-tone chime)
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // First tone (higher pitch)
+            oscillator1.frequency.value = 800;
+            oscillator1.type = 'sine';
+            
+            // Second tone (lower pitch)
+            oscillator2.frequency.value = 600;
+            oscillator2.type = 'sine';
+            
+            // Volume envelope
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            // Play first tone
+            oscillator1.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.2);
+            
+            // Play second tone slightly after
+            oscillator2.start(audioContext.currentTime + 0.1);
+            oscillator2.stop(audioContext.currentTime + 0.3);
+            
+            console.log('🔔 Notification sound played');
+        } catch (error) {
+            console.warn('Could not play notification sound:', error);
+            // Fallback: try simple beep
+            try {
+                const beep = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OSfTQ8OUKbl8LZjHAY4kdfyzHksBSR3x/DdkEAKFF606euoVRQKRp/g8r5sIQUrgc7y2Yk2CBtpvfDkn00PDlCm5fC2YxwGOJHX8sx5LAUkd8fw3ZBAC');
+                beep.volume = 0.3;
+                beep.play().catch(e => console.warn('Beep fallback failed:', e));
+            } catch (e) {
+                console.warn('All sound methods failed:', e);
+            }
+        }
+    }
+    
+    // Check for new notifications after form submissions (add/edit/delete)
+    // This will refresh notifications when user returns to index page
+    if (window.location.pathname === '/' || window.location.pathname === '/index/') {
+        // Check for notifications after a short delay (allows server to process)
+        setTimeout(function() {
+            updateNotificationBadgeSilently();
+        }, 2000);
+    }
+</script>
+</body>
+</html>

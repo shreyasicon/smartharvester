@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Profile | SmartCrop{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow-sm mx-auto" style="max-width:400px;">
+    <div class="card-body text-center">
+      <h2 class="mb-3" style="color:#628443;">Your Profile</h2>
+      <p><strong>Username:</strong> {{ user.username }}</p>
+      <p><strong>Email:</strong> {{ user.email }}</p>
+      {% if user.first_name or user.last_name %}
+      <p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+      {% endif %}
+      <a href="{% url 'logout' %}" class="btn btn-outline-danger mt-3">Logout</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

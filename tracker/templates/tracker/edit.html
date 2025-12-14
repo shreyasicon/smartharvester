@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_editing %}Edit Planting{% else %}Add a New Planting{% endif %}</title>
+    <style>
+        :root {
+            --primary-color: #5cb85c; --text-color: #f8f9fa; --text-muted: #adb5bd;
+            --surface-color: rgba(44, 48, 52, 0.85); --border-color: #495057;
+            --day-bg-start: #87CEEB; --day-bg-end: #4682B4;
+            --night-bg-start: #0c1445; --night-bg-end: #212529;
+            --sun-color: #f9d71c; --moon-color: #f4f6f0;
+        }
+        html { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; display: flex; flex-direction: column; min-height: 100%;
+            position: relative; color: var(--text-color);
+            transition: background 1s ease;
+            overflow: hidden;
+        }
+        body.day { background: linear-gradient(to bottom, var(--day-bg-start), var(--day-bg-end)); }
+        body.night { background: linear-gradient(to bottom, var(--night-bg-start), var(--night-bg-end)); }
+        .scene { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .forest-layer { position: absolute; bottom: 0; left: 0; width: 200%; height: 100%; background-repeat: repeat-x; background-position: bottom left; }
+        #sky-orb { position: absolute; top: 10%; right: 15%; width: 60px; height: 60px; border-radius: 50%; transition: all 1s ease; }
+        body.day #sky-orb { background: var(--sun-color); box-shadow: 0 0 30px var(--sun-color); }
+        body.night #sky-orb { background: var(--moon-color); box-shadow: 0 0 30px var(--moon-color); }
+        #forest-back { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200"><path fill="%232c3e50" d="M0 200 V120 C100 110, 150 130, 250 125 S400 110, 500 120 S650 140, 800 130 V200 Z" /></svg>'); animation: parallax 60s linear infinite; z-index: 2; opacity: 0.5; }
+        #forest-mid { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200"><path fill="%2334495e" d="M0 200 V140 C80 150, 180 130, 280 135 S450 160, 550 150 S700 130, 800 140 V200 Z" /></svg>'); animation: parallax 40s linear infinite; z-index: 3; opacity: 0.7; }
+        #forest-front { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200"><path fill="%231e2b37" d="M0 200 V160 C120 150, 220 170, 320 165 S500 140, 600 150 S750 170, 800 160 V200 Z" /></svg>'); animation: parallax 20s linear infinite; z-index: 4; }
+        .main-content-wrapper, .footer { z-index: 10; position: relative; }
+        .footer { text-align: center; padding: 1em; font-size: 0.9em; color: var(--text-muted); background: rgba(0,0,0,0.2); backdrop-filter: blur(5px); flex-shrink: 0; }
+        .main-content-wrapper { display: flex; justify-content: space-around; align-items: center; flex-grow: 1; padding: 1em; }
+        .quote-panel {flex: 1; max-width: 250px; font-style: italic; text-align: center; font-size: 1em; padding: 1em; color: black; font-weight: 600; text-shadow: 0px 0px 3px rgba(255,255,255,0.7);}
+        form {display: flex; flex-direction: column; width: 100%; max-width: 450px; flex-shrink: 0; background: var(--surface-color); padding: 1.5em; border-radius: 12px; border-left: 5px solid var(--primary-color); backdrop-filter: blur(10px); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);}
+        form h2 { text-align: center; color: var(--primary-color); margin-top: 0; font-size: 1.5em; }
+        label { margin-top: 0.8em; font-weight: bold; margin-bottom: 0.4em; font-size: 0.9em; }
+        input, select, textarea { padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: #495057; color: var(--text-color); font-size: 1em; }
+        textarea { resize: vertical; min-height: 60px; }
+        button { background-color: var(--primary-color); color: white; padding: 12px 20px; border: none; border-radius: 8px; margin-top: 1.5em; cursor: pointer; font-size: 1em; font-weight: bold; }
+        .back-link { color: var(--primary-color); text-decoration: none; margin-top: 1em; text-align: center; font-size: 0.9em; }
+        .bird { position: absolute; width: 50px; height: 50px; background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M22,7.5C22,5.56 20.44,4 18.5,4C17.2,4 16.08,4.73 15.5,5.75L12,12L8.5,5.75C7.92,4.73 6.8,4 5.5,4C3.56,4 2,5.56 2,7.5C2,8.81 2.76,9.92 3.8,10.5L12,16L20.2,10.5C21.24,9.92 22,8.81 22,7.5Z"/></svg>'); z-index: 5; animation: fly-left linear infinite; }
+        #bird1 { top: 15%; animation-duration: 15s; animation-delay: 0s; }
+        #bird2 { top: 25%; animation-duration: 20s; animation-delay: 3s; }
+        #bird3 { top: 35%; animation-duration: 18s; animation-delay: 8s; }
+        #walking-deer { position: absolute; bottom: 100px; width: 100px; height: 100px; background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%234a4a4a" d="M12,2L10.5,3.5L12,5L14,3L12,2M19,12C19,11.5 18.8,11 18.5,10.5L17.5,9.5C17.2,9.2 16.8,9 16.5,9H13V6L12,7L11,6V9H7.5C6.9,9 6.5,9.4 6.5,10C6.5,10.6 6.9,11 7.5,11H8V13H6V12L3,15V21H5V18L6.5,17.5L7,21H9L8.5,18H9.5L10,21H12L11,14L12,13L14.5,15.5L16,14L15,12H16.5C17.9,12 19,10.9 19,9.5V9C19,8.4 18.6,8 18,8L17,8.5V6.5L18.5,5C19.8,6.2 20.5,7.9 20.5,9.5C20.5,10.9 19.9,12.1 19,13C19.6,13.6 20,14.5 20,15.5V21H22V15.5C22,13.6 20.7,12 19,12Z"/></svg>'); z-index: 3; animation: walk-across 50s linear infinite 10s; }
+        .firefly { position: absolute; width: 4px; height: 4px; background: #9acd32; border-radius: 50%; box-shadow: 0 0 10px #9acd32; animation: firefly-float 5s infinite ease-in-out; }
+        @keyframes parallax { from { background-position-x: 0; } to { background-position-x: -200%; } }
+        @keyframes fly-left { from { left: 110%; } to { left: -10%; } }
+        @keyframes walk-across { from { left: -10%; transform: scaleX(1); } 49% { transform: scaleX(1); } 50% { left: 110%; transform: scaleX(-1); } 99% { transform: scaleX(-1); } to { left: -10%; transform: scaleX(1); } }
+        @keyframes firefly-float { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <div id="sky-orb"></div>
+        <div id="forest-back" class="forest-layer"></div>
+        <div id="forest-mid" class="forest-layer"></div>
+        <div class="bird" id="bird1"></div>
+        <div class="bird" id="bird2"></div>
+        <div id="walking-deer"></div>
+        <div id="forest-front" class="forest-layer"></div>
+        <div class="bird" id="bird3"></div>
+        <div id="fireflies"></div>
+    </div>
+
+    <main class="main-content-wrapper">
+        <div class="quote-panel" id="quote-left"></div>
+        <form action="{% if is_editing %}{% url 'update_planting' planting.id %}{% else %}{% url 'save_planting' %}{% endif %}" method="post" enctype="multipart/form-data">
+            <h2>{% if is_editing %}Edit Planting{% else %}Add a New Planting{% endif %}</h2>
+            {% csrf_token %}
+            
+            <label for="crop-select">Choose a crop:</label>
+            <select name="crop_name" id="crop-select" required autocomplete="off">
+                <option value="" disabled {% if not is_editing %}selected{% endif %}>--Please choose a crop--</option>
+                {% for name in plant_names %}
+                    <option value="{{ name }}" {% if is_editing and planting.crop_name == name %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="planting-date">Planting Date:</label>
+            <input type="date" id="planting-date" name="planting_date" value="{% if is_editing %}{{ planting.planting_date_str|default:planting.planting_date|date:'Y-m-d' }}{% endif %}" required autocomplete="off">
+
+            <label for="batch-id">Batch ID (Optional):</label>
+            <input type="text" id="batch-id" name="batch_id" value="{% if is_editing %}{{ planting.batch_id }}{% endif %}" autocomplete="off">
+
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" autocomplete="off" aria-label="Notes"></textarea>
+
+            <label for="image">Image (optional):</label>
+            <input type="file" id="image" name="image" accept="image/*" autocomplete="off" aria-label="Plant image">
+            {% if is_editing and planting.image_url %}
+                <br>
+                <strong>Current Image:</strong><br>
+                <img src="{{ planting.image_url }}" alt="Current Image" style="max-width:140px;max-height:140px;border-radius:10px;">
+            {% endif %}
+
+            <button type="submit" onclick="this.form.submit(); setTimeout(function(){ window.location.href='{% url 'index' %}'; }, 500);">{% if is_editing %}Update Planting{% else %}Save Planting{% endif %}</button>
+            <a href="{% url 'index' %}" class="back-link">&larr; Back to Dashboard</a>
+        </form>
+        <script>
+            // Refresh notifications after form submission
+            document.querySelector('form').addEventListener('submit', function() {
+                // After redirect to index, notifications will be refreshed
+                setTimeout(function() {
+                    if (window.location.pathname === '/' || window.location.pathname === '/index/') {
+                        // Trigger notification refresh on index page
+                        if (typeof updateNotificationBadgeSilently === 'function') {
+                            updateNotificationBadgeSilently();
+                        }
+                    }
+                }, 2000);
+            });
+        </script>
+        <div class="quote-panel" id="quote-right"></div>
+    </main>
+
+    <footer class="footer">Plan Ahead, Harvest with Confidence.</footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const body = document.body;
+            const hour = new Date().getHours();
+            if (hour > 6 && hour < 19) {
+                body.classList.add('day');
+            } else {
+                body.classList.add('night');
+                createFireflies();
+            }
+            function createFireflies() {
+                const fireflyContainer = document.getElementById('fireflies');
+                if (!fireflyContainer) return;
+                const count = 20;
+                for (let i = 0; i < count; i++) {
+                    const firefly = document.createElement('div');
+                    firefly.className = 'firefly';
+                    firefly.style.left = `${Math.random() * 100}%`;
+                    firefly.style.top = `${Math.random() * 100}%`;
+                    firefly.style.animationDelay = `${Math.random() * 5}s`;
+                    firefly.style.animationDuration = `${3 + Math.random() * 2}s`;
+                    fireflyContainer.appendChild(firefly);
+                }
+            }
+            const quotes = [
+                "The best time to plant a tree was 20 years ago. The second best time is now.",
+                "To plant a garden is to believe in tomorrow.",
+                "In nature, nothing is perfect and everything is perfect.",
+                "Look deep into nature, and then you will understand everything better.",
+                "The forest makes your heart gentle. You become one with it.",
+                "Adopt the pace of nature: her secret is patience.",
+                "A seed hidden in the heart of an apple is an orchard invisible.",
+                "The clearest way into the Universe is through a forest wilderness."
+            ];
+            const quoteLeft = document.getElementById('quote-left');
+            const quoteRight = document.getElementById('quote-right');
+            let quote1_idx = Math.floor(Math.random() * quotes.length);
+            let quote2_idx;
+            do { quote2_idx = Math.floor(Math.random() * quotes.length); } while (quote1_idx === quote2_idx);
+            quoteLeft.textContent = `"${quotes[quote1_idx]}"`;
+            quoteRight.textContent = `"${quotes[quote2_idx]}"`;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Sign Up | SmartCrop{% endblock %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+body {
+  min-height: 100vh;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(46, 160, 97, 0.42), rgba(4, 20, 9, 0.96)),
+    url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80') no-repeat center center fixed;
+  background-size: cover;
+  position: relative;
+  overflow: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(190, 255, 210, 0.18), transparent 55%),
+    radial-gradient(circle at 80% 85%, rgba(72, 187, 120, 0.22), transparent 55%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 0;
+}
+.brand-slogan {
+  position: fixed;
+  top: 24px;
+  left: 0; right: 0;
+  z-index: 10;
+  text-align: center;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 5px 24px #1c2e262e, 0 8px 44px #155c2c38;
+  opacity: 0.15;
+  pointer-events: none;
+}
+.card-3d-signup {
+  margin: 12vh auto 0 auto;
+  max-width: 430px;
+  border-radius: 22px;
+  background: radial-gradient(circle at top, #f9fffaf5 0%, #ebf7f1fa 40%, #dbeee5 100%);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.58);
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+}
+.card-top-3d {
+  background: linear-gradient(120deg, #61c07a 55%, #0aad5e 100%);
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e7ffef;
+  font-size: 1.25rem;
+  font-weight: 700;
+  position: relative;
+}
+.card-body-3d {
+  padding: 36px 28px 25px 28px;
+  position: relative;
+}
+.card-body-3d::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(circle at 5% 0%, rgba(16, 185, 129, 0.22), transparent 55%),
+    radial-gradient(circle at 95% 100%, rgba(101, 163, 13, 0.18), transparent 55%);
+  opacity: 0.55;
+  z-index: -1;
+}
+.signup-label {
+  margin-bottom: 0.5em;
+  color: #13795e;
+  font-weight: 600;
+  font-size: 1.07rem;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+.signup-input-group {
+  border-radius: 13px;
+  box-shadow: 0 6px 24px rgba(37, 165, 106, 0.18);
+  background: linear-gradient(135deg, #eaf9f4fa 0%, #ddf3ea 100%);
+  margin-bottom: 20px;
+}
+.signup-input-group input, .signup-input-group select {
+  background: transparent !important;
+  border: none !important;
+  font-size: 1.13rem;
+  color: #245b34;
+}
+.signup-input-group .form-control:focus {
+  box-shadow: none;
+}
+.input-group-text {
+  background: transparent;
+  border: none;
+  color: #16b158;
+  font-size: 1.19em;
+}
+.signup-btn-3d {
+  width: 100%;
+  padding: 0.82em 0;
+  border: none;
+  border-radius: 11px;
+  background: linear-gradient(105deg, #22c55e 0%, #15803d 45%, #166534 100%);
+  color: #fff;
+  font-size: 1.13rem;
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgba(22, 163, 74, 0.35);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background 0.2s;
+  letter-spacing: 1.08px;
+}
+.signup-btn-3d:hover {
+  background: linear-gradient(105deg, #4ade80 0%, #16a34a 40%, #15803d 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(21, 128, 61, 0.45);
+}
+.login-row-3d {
+  text-align: center; font-size: 1em; margin-top: 1.27em;
+}
+.login-row-3d a { color: #27b48f; font-weight: 600; }
+.login-row-3d a:hover { color: #157156; }
+.form-error-3d {
+  color: #c0392b;
+  background: #fdeeeecc;
+  border-radius: 10px;
+  padding: 0.55em 1em;
+  margin-bottom: 0.93em;
+  border-left: 4px solid #e15f49aa;
+  font-size: 1.07em;
+  font-weight: 500;
+}
+</style>
+<div class="brand-slogan">Your AI Harvester Assistant</div>
+<div class="card-3d-signup">
+  <div class="card-top-3d">
+    <span>Register for SmartCrop</span>
+  </div>
+  <div class="card-body-3d">
+    <div class="mb-2 signup-label">SIGN UP</div>
+    {% if form.errors %}
+      <div class="form-error-3d">
+        Please fix the issues below and try again.
+        <ul>
+        {% for field in form %}
+            {% for error in field.errors %}
+            <li><b>{{ field.label }}:</b> {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <form method="post" autocomplete="on">
+      {% csrf_token %}
+      <div class="input-group signup-input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-person-circle"></i></span>
+        {{ form.username }}
+        {% for error in form.username.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="input-group signup-input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+        {{ form.email }}
+        {% for error in form.email.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="input-group signup-input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+        {{ form.password1 }}
+        {% for error in form.password1.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="input-group signup-input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+        {{ form.password2 }}
+        {% for error in form.password2.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="input-group signup-input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-globe-asia-australia"></i></span>
+        {{ form.country }}
+        {% for error in form.country.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="signup-btn-3d">Sign Up</button>
+    </form>
+    <div class="login-row-3d">
+      Already have an account?
+      <a href="{% url 'login' %}">Login</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
