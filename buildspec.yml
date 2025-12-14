@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - echo Build started on `date`
+      - echo Installing dependencies...
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - echo Running tests...
+      - python manage.py check --deploy
+      - python manage.py collectstatic --noinput || echo "Collectstatic failed, continuing..."
+      - echo Build completed on `date`
+artifacts:
+  files:
+    - '**/*'
+  name: UrSmartCrop-$(date +%Y-%m-%d)

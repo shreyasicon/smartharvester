@@ -1,0 +1,21 @@
+[{
+        "ParameterKey": "DBMasterUsername",
+        "ParameterValue": "terratrackadmin"
+    },
+    {
+        "ParameterKey": "DBMasterPassword",
+        "ParameterValue": "YOUR_STRONG_PASSWORD"
+    },
+    {
+        "ParameterKey": "DBName",
+        "ParameterValue": "terratrackdbname"
+    },
+    {
+        "ParameterKey": "VpcId",
+        "ParameterValue": "vpc-060efd11fa42f94c6"
+    },
+    {
+        "ParameterKey": "SubnetIds",
+        "ParameterValue": "subnet-04b68ac9bcdaab8c2,subnet-0c1dcabfd4b214170"
+    }
+]

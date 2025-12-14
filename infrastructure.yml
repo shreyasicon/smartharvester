@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This template deploys an RDS PostgreSQL database for the TerraTrack Django application.
+
+Parameters:
+  DBMasterUsername:
+    Type: String
+    Description: Master username for the RDS database created.
+    Default: terratrackadmin
+
+  DBMasterPassword:
+    Type: String
+    Description: Master password for the RDS database created.
+    NoEcho: true
+    MinLength: 8
+
+  DBName:
+    Type: String
+    Description: Name for the database created.
+    Default: terratrackdbname
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: "VPC to launch the database into. Please select your default VPC."
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: "Select at least two subnets for the RDS instance. These should be in your default VPC log."
+
+
+Resources:
+  # Database Security Group to allow inbound traffic from the application
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow the inbound traffic from Elastic Beanstalk"
+      VpcId: !Ref VpcId
+
+  # Subnet group for the RDS instance
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for this TerraTrack RDS instance"
+      SubnetIds: !Ref SubnetIds
+
+  # RDS Database Instance
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DBName
+      Engine: postgres
+      EngineVersion: '15'
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: '20'
+      PubliclyAccessible: true
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "Endpoint of the RDS database instance"
+    Value: !GetAtt RDSInstance.Endpoint.Address

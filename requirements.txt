@@ -1,0 +1,15 @@
+Django>=4.2,<5.0
+gunicorn
+psycopg2-binary
+django-redis
+boto3
+django-storages
+whitenoise
+dj-database-url
+python-dotenv
+# add any other project-specific packages here
+Pillow
+requests
+python-jose[cryptography]
+PyJWT>=2.0.0
+cachetools
